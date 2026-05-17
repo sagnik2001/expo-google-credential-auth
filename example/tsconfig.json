@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "expo-google-credential-auth": ["../src/index"],
+      "expo-google-credential-auth/*": ["../src/*"]
+    }
+  }
+}
