@@ -1,16 +1,18 @@
 # expo-google-credential-auth
 
-Modern **Sign in with Google** for Expo / React Native, built on Android's [Credential Manager](https://developer.android.com/identity/sign-in/credential-manager-siwg) API.
+Modern **Sign in with Google** and **OAuth authorization** for Expo / React Native, built on Android's [Credential Manager](https://developer.android.com/identity/sign-in/credential-manager-siwg) + Google Identity Services APIs.
 
-Returns a verified Google **ID token** via either a silent one-tap (returning users) or a full account picker (first-time users).
+- **Sign in** — get a verified Google ID token via a silent one-tap (returning users) or full account picker (first-time users).
+- **Authorize** — request OAuth scopes and get an access token to call any Google API (Drive, Calendar, Gmail, People, etc.).
+- **Revoke** — properly disconnect a user from Google's side AND clear Android's stubborn local OAuth cache.
 
-> **Android only.** This package wraps the modern Credential Manager API that Google now recommends for new apps. iOS is not currently supported — open an issue or PR if you need it.
+> **Android only.** This package wraps the modern Credential Manager + Identity Services APIs that Google now recommends for new apps. iOS is not currently supported — open an issue or PR if you need it.
 
 ## Why this exists
 
-The popular [`@react-native-google-signin/google-signin`](https://www.npmjs.com/package/@react-native-google-signin/google-signin) free package still wraps the **legacy Google Sign-In SDK** on Android. Google has deprecated that SDK in favor of Credential Manager, which is what this package uses.
+The popular [`@react-native-google-signin/google-signin`](https://www.npmjs.com/package/@react-native-google-signin/google-signin) free package still wraps the **legacy Google Sign-In SDK** on Android. Google has deprecated that SDK in favor of Credential Manager + Identity Services, which is what this package uses.
 
-The paid Universal Sign-In version uses Credential Manager too — this package gives you the same modern Android flow as a small, focused, open-source alternative.
+The paid Universal Sign-In version uses these modern APIs too — this package gives you the same modern Android flow as a small, focused, open-source alternative.
 
 ## Install
 
@@ -29,7 +31,7 @@ npx expo run:android
 
 ## Setup (Google Cloud Console)
 
-You need **two** OAuth client IDs in the same Google Cloud project:
+You need **two** OAuth client IDs in the same Google Cloud project.
 
 ### 1. Android OAuth client
 
@@ -57,7 +59,25 @@ This is the one you pass to `configure()` — counterintuitive, but Google uses 
 
 Copy the resulting client ID (ends in `.apps.googleusercontent.com`) — you'll pass it as `webClientId`.
 
-## Usage
+### 3. OAuth consent screen
+
+Required even for testing. Go to **APIs & Services → OAuth consent screen**:
+
+1. **User type**: External (or Internal if you're in a Workspace org and only testing internally).
+2. Fill in the app name, support email, dev email.
+3. **Scopes**: click **Add or Remove Scopes** and add every scope your app will request. At minimum:
+   - `openid`
+   - `.../auth/userinfo.email`
+   - `.../auth/userinfo.profile`
+   - …plus any API scopes (e.g. `.../auth/drive.readonly`) you'll call `requestAuthorization` with.
+4. **Test users**: while the app is in "Testing" mode, add every Google account email that will sign in.
+5. Save and continue through every page (changes don't persist if you bail midway).
+
+### 4. Enable any APIs you'll call
+
+For each Google API you'll use (Drive, Calendar, Gmail, etc.), enable it in **APIs & Services → Library**. The basic identity APIs (`/userinfo`) are always available, no extra setup.
+
+## Quick start
 
 ```ts
 import GoogleAuth from 'expo-google-credential-auth';
@@ -67,43 +87,86 @@ GoogleAuth.configure({
   webClientId: 'XXXX.apps.googleusercontent.com',
 });
 
-async function signIn() {
-  const result = await GoogleAuth.signIn({
-    // Optional: pass a fresh per-attempt nonce. Verify it server-side
-    // in the `nonce` claim of the returned ID token to prevent replays.
-    nonce: 'a-fresh-random-string',
-  });
+// 1. Authenticate the user. Returns an ID token your backend can verify.
+const r = await GoogleAuth.signIn({ nonce: 'fresh-random-per-attempt' });
+if (r.type !== 'success') return;
+const idToken = r.idToken;
 
-  switch (result.type) {
-    case 'success':
-      console.log('Signed in as', result.user.email);
-      console.log('ID token:', result.idToken);
-      // Send result.idToken to your backend for verification.
-      break;
-    case 'cancelled':
-      // User dismissed the sheet.
-      break;
-    case 'noSavedCredentialFound':
-      // Device has no Google account configured.
-      break;
-  }
-}
+// 2. Authorize specific OAuth scopes. Returns an access token for HTTP API calls.
+const auth = await GoogleAuth.requestAuthorization({
+  scopes: [
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    // any other scope you want — see "Scopes" section below
+  ],
+});
 
-async function signOut() {
-  await GoogleAuth.signOut();
-}
+// 3. Use the access token to call any Google API the user granted scopes for.
+const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+  headers: { Authorization: `Bearer ${auth.accessToken}` },
+});
+
+// 4. Revoke the OAuth grant when the user disconnects.
+await GoogleAuth.revokeAccess(auth.accessToken);
+
+// 5. Sign out clears Credential Manager's auto-select hint.
+await GoogleAuth.signOut();
 ```
 
-### The sign-in flow in detail
+## Authentication vs authorization
 
-`signIn()` runs in two passes for the best UX:
+This module exposes them as **two separate flows** because they are two separate things:
 
-1. **Silent / one-tap** — tries with `filterByAuthorizedAccounts = true`. If exactly one account has previously authorized this app, it signs in silently with a small "Signing you in..." toast. No picker.
-2. **Full picker** — if no authorized accounts exist, falls back to showing every Google account on the device.
+| | `signIn` | `requestAuthorization` |
+|---|---|---|
+| What it proves | *Who* the user is | *What* you can do on their behalf |
+| Returns | ID token (JWT) | Access token (opaque OAuth bearer) |
+| Audience | Your backend (verify the JWT) | Google API endpoints |
+| Revocable? | No (JWTs just expire) | Yes (`revokeAccess`) |
+| UI | Bottom-sheet account picker | OAuth consent screen |
 
-This means the first sign-in shows the picker; subsequent sign-ins (after `signOut`) are one-tap.
+Most legacy libraries conflate them into one call. Keeping them separate matches what's actually happening underneath and gives you finer control — you can sign in without authorizing, request more scopes later, or revoke API access without signing out.
 
-## API
+## Scopes
+
+**You can request any OAuth scope Google supports** — this module passes your `scopes` array straight through to Android's `AuthorizationClient` without modification. Browse Google's [OAuth scopes catalog](https://developers.google.com/identity/protocols/oauth2/scopes) to find what you need.
+
+Some examples:
+
+```ts
+// Profile + email (basic identity, almost always wanted)
+['https://www.googleapis.com/auth/userinfo.email',
+ 'https://www.googleapis.com/auth/userinfo.profile',
+ 'openid']
+
+// Read-only access to Drive files
+['https://www.googleapis.com/auth/drive.readonly']
+
+// Read user's primary calendar
+['https://www.googleapis.com/auth/calendar.readonly']
+
+// Send mail as the user
+['https://www.googleapis.com/auth/gmail.send']
+
+// Multiple at once — one consent prompt covers them all
+['https://www.googleapis.com/auth/userinfo.email',
+ 'https://www.googleapis.com/auth/drive.readonly',
+ 'https://www.googleapis.com/auth/calendar.readonly']
+```
+
+Three requirements for a scope to actually work:
+
+1. **The scope must be added to your OAuth Consent Screen** (Cloud Console → OAuth consent screen → Scopes).
+2. **The corresponding API must be enabled** in your project (Cloud Console → APIs & Services → Library).
+3. **For sensitive / restricted scopes** (Drive, Gmail, etc.), Google requires verification before you can go to production. In Testing mode it works for listed test users.
+
+### One important gotcha: identity-only scope requests don't trigger the consent screen
+
+If you request **only** identity scopes (`openid`, `userinfo.email`, `userinfo.profile`), Android's `AuthorizationClient` treats them as "already granted via sign-in" and silently returns an identity-flavored token that **doesn't work as an OAuth bearer** for HTTP APIs.
+
+To force a real OAuth grant, include at least one API scope alongside the identity scopes, even if you don't strictly need it. The resulting access token will then work for `/userinfo` and any other endpoint.
+
+## API reference
 
 ### `configure(options)`
 
@@ -124,14 +187,52 @@ type SignInResult =
   | { type: 'noSavedCredentialFound' };
 
 type GoogleUser = {
-  id: string;
   email: string;
   name: string | null;
+  givenName: string | null;
+  familyName: string | null;
+  phoneNumber: string | null;
   photo: string | null;
 };
 ```
 
-Returns a typed discriminated union — no exception-as-control-flow for the common "cancelled" / "no account" cases. Real errors (network failure, misconfiguration, etc.) still throw.
+Authenticates the user. Returns a typed discriminated union — no exception-as-control-flow for the common "cancelled" / "no account" cases. Real errors (network failure, misconfiguration) still throw.
+
+The flow runs in two passes: a silent attempt for returning users (one-tap), falling back to a full account picker for first-time users.
+
+The user's **stable Google ID** is in the JWT's `sub` claim — decode `idToken` server-side after verifying its signature. The `email` field on `GoogleUser` is the user's email, which is mutable; don't use it as a primary key.
+
+### `requestAuthorization(options)`
+
+```ts
+requestAuthorization(options: {
+  scopes: string[];
+  offlineAccess?: boolean;
+}): Promise<AuthorizationResult>
+
+type AuthorizationResult = {
+  accessToken: string | null;
+  grantedScopes: string[];
+  serverAuthCode: string | null;
+};
+```
+
+Requests OAuth scopes. Returns an access token your client can use to call Google APIs directly.
+
+- `scopes`: array of any scope strings — see [Scopes](#scopes).
+- `offlineAccess`: if `true`, also returns a one-time `serverAuthCode` your backend can exchange (using the OAuth client *secret*) for a refresh token. Useful when your server needs to call Google APIs on the user's behalf while they're offline.
+
+The first call for new scopes shows Google's consent screen. Returning users with previously-granted scopes get a silent grant (no UI).
+
+### `revokeAccess(accessToken)`
+
+```ts
+revokeAccess(accessToken: string): Promise<void>
+```
+
+Tells Google to forget the OAuth grant for this token, and clears the local Android OAuth caches that would otherwise return a stale token on the next `requestAuthorization`. The user will see the consent screen again next time.
+
+Idempotent: passing a token Google has already invalidated is a no-op, not an error.
 
 ### `signOut()`
 
@@ -139,14 +240,13 @@ Returns a typed discriminated union — no exception-as-control-flow for the com
 signOut(): Promise<void>
 ```
 
-Clears Credential Manager's auto-select hint for your app. The next `signIn()` will show the picker again. **This does not sign the user out of Google itself** — the Google account remains on the device.
+Clears Credential Manager's auto-select hint for your app. The next `signIn()` will show the picker again. **This does not sign the user out of Google** — the account remains on the device, and any OAuth grants stay intact until you call `revokeAccess`.
 
 ## What this package does *not* do
 
 - **iOS / web / macOS** — Android only.
-- **Access tokens for Google APIs** (Drive, Calendar, Gmail, etc.) — Credential Manager only returns ID tokens. Calling Google APIs requires the separate `AuthorizationClient` flow, which isn't included here yet.
-- **`revokeAccess`** — Google's revoke endpoint requires an access or refresh token, which Credential Manager doesn't issue. Will be added alongside the authorization flow in a future release.
-- **Backend ID token verification** — that's your server's job. Use Google's [`google-auth-library`](https://www.npmjs.com/package/google-auth-library) or any standard JWT library to verify the `aud`, `iss`, signature, and `nonce` claims.
+- **Backend ID token verification** — that's your server's job. Use Google's [`google-auth-library`](https://www.npmjs.com/package/google-auth-library) or any standard JWT library to verify the signature, `aud`, `iss`, `exp`, and (if you sent one) `nonce` claims.
+- **Refresh token rotation** — handled by your backend when it exchanges the `serverAuthCode`.
 
 ## Troubleshooting
 
@@ -154,18 +254,31 @@ Clears Credential Manager's auto-select hint for your app. The next `signIn()` w
 
 Emulators usually have no Google account. Open device Settings → Accounts → add a Google account, or test on a real device.
 
-### Sign-in fails with a vague error code
+### Sign-in fails with a vague error code (e.g. `[16]` or `DEVELOPER_ERROR`)
 
 Almost always a SHA-1 / package name mismatch. Verify:
-- The SHA-1 in your **Android** OAuth client matches the output of `./gradlew signingReport`
+- The SHA-1 in your **Android** OAuth client matches `./gradlew signingReport`
 - The package name in your **Android** OAuth client matches `android.package` in your app config
 - Your **Web** and **Android** OAuth clients are in the **same** Google Cloud project
 
-For production / TestFlight-equivalent builds, you also need to register the release SHA-1 separately.
+For production builds, you also need to register the release SHA-1 separately (and the Play Signing SHA-1 if using Play App Signing).
+
+### "Access blocked: the app is currently being tested"
+
+Your Google account isn't on the OAuth Consent Screen's **Test users** list. Add it under APIs & Services → OAuth consent screen → Test users.
+
+### `requestAuthorization` returns a token but `/userinfo` (or any Google API) returns 401 / Invalid Credentials
+
+Two known causes:
+
+1. **You only requested identity scopes** — see the gotcha in the [Scopes](#scopes) section. Add an API scope to force a real OAuth grant.
+2. **Your local Play Services OAuth cache is stale** — common after revoking from outside the app, or after a Cloud project config change. Easiest fix: test with a different Google account, or remove + re-add the account in device Settings → Accounts.
+
+This module's `revokeAccess` calls multiple cache-clearing APIs to keep the local state in sync, but Play Services caches can occasionally outlive even those.
 
 ### `is not a function (it is undefined)` after editing Kotlin
 
-JS hot reloaded but the native module wasn't rebuilt. Run `npx expo run:android` again — native code changes always require a full rebuild.
+JS hot-reloaded but the native module wasn't rebuilt. Run `npx expo run:android` again — native code changes always require a full rebuild.
 
 ## License
 

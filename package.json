@@ -8,7 +8,9 @@
     "build": "expo-module build",
     "clean": "expo-module clean",
     "lint": "expo-module lint",
-    "test": "expo-module test",
+    "test": "npm run test:types && npm run test:android",
+    "test:types": "tsc --noEmit -p tsconfig.test.json",
+    "test:android": "cd example/android && ./gradlew :expo-google-credential-auth:testDebugUnitTest",
     "prepare": "expo-module prepare",
     "prepublishOnly": "expo-module prepublishOnly",
     "expo-module": "expo-module",
@@ -34,11 +36,11 @@
   "author": "Sagnik Pal <sagnik@newme.asia> (https://github.com/sagnik2001)",
   "license": "MIT",
   "homepage": "https://github.com/sagnik2001/expo-google-credential-auth#readme",
-  "dependencies": {},
   "devDependencies": {
     "@types/react": "~19.1.1",
-    "expo-module-scripts": "^55.0.2",
+    "expect-type": "^1.3.0",
     "expo": "^55.0.24",
+    "expo-module-scripts": "^55.0.2",
     "react-native": "0.82.1"
   },
   "peerDependencies": {

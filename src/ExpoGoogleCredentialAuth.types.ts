@@ -31,3 +31,27 @@ export type SignInOptions = {
    */
   nonce?: string;
 };
+
+export type RequestAuthorizationOptions = {
+  /**
+   * OAuth scopes to request, e.g.
+   *   ['https://www.googleapis.com/auth/drive.readonly']
+   * Standard profile scopes: 'email', 'profile', 'openid'.
+   */
+  scopes: string[];
+  /**
+   * If true, also requests a one-time server auth code your backend can
+   * exchange for a refresh token. Requires `configure({ webClientId })` to
+   * have been called.
+   */
+  offlineAccess?: boolean;
+};
+
+export type AuthorizationResult = {
+  /** OAuth 2.0 access token. Use this to call Google APIs and to revoke. */
+  accessToken: string | null;
+  /** Scopes the user actually granted (may be a subset of what you asked for). */
+  grantedScopes: string[];
+  /** One-time server auth code, only present when offlineAccess was true. */
+  serverAuthCode: string | null;
+};
