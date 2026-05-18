@@ -1,12 +1,12 @@
 # expo-google-credential-auth
 
-Modern **Sign in with Google** and **OAuth authorization** for Expo / React Native, built on Android's [Credential Manager](https://developer.android.com/identity/sign-in/credential-manager-siwg) + Google Identity Services APIs.
+Modern **Sign in with Google** and **OAuth authorization** for Expo / React Native.
 
 - **Sign in** — get a verified Google ID token via a silent one-tap (returning users) or full account picker (first-time users).
 - **Authorize** — request OAuth scopes and get an access token to call any Google API (Drive, Calendar, Gmail, People, etc.).
-- **Revoke** — properly disconnect a user from Google's side AND clear Android's stubborn local OAuth cache.
+- **Revoke** — properly disconnect a user from Google's side AND clear stubborn local OAuth caches.
 
-> **Android only.** This package wraps the modern Credential Manager + Identity Services APIs that Google now recommends for new apps. iOS is not currently supported — open an issue or PR if you need it.
+> **Currently Android-only** — built on Android's [Credential Manager](https://developer.android.com/identity/sign-in/credential-manager-siwg) + Google Identity Services APIs, which Google recommends for all new apps. iOS and web are on the roadmap. Open an issue or PR if you need them sooner.
 
 ## Why this exists
 
