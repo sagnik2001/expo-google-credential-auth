@@ -4,6 +4,15 @@
   "description": "Sign in with Google for Expo / React Native on Android, using the modern Credential Manager API. Returns an ID token via a one-tap or account-picker flow.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "files": [
+    "android/build.gradle",
+    "android/src/main/",
+    "build/",
+    "src/",
+    "expo-module.config.json",
+    "README.md",
+    "TESTING.md"
+  ],
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
