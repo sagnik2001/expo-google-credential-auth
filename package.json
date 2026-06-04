@@ -1,7 +1,7 @@
 {
   "name": "expo-google-credential-auth",
-  "version": "0.1.0",
-  "description": "Sign in with Google for Expo / React Native on Android, using the modern Credential Manager API. Returns an ID token via a one-tap or account-picker flow.",
+  "version": "0.2.0",
+  "description": "Sign in with Google for Expo / React Native on Android and iOS — Android's modern Credential Manager API and the iOS GoogleSignIn SDK. Returns an ID token via a one-tap / account-picker flow, with a separate authorization flow for OAuth access tokens.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -36,11 +36,16 @@
     "google-signin",
     "credential-manager",
     "android",
+    "ios",
+    "googlesignin",
     "oauth",
     "id-token",
     "authentication"
   ],
-  "repository": "https://github.com/sagnik2001/expo-google-credential-auth",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sagnik2001/expo-google-credential-auth.git"
+  },
   "bugs": {
     "url": "https://github.com/sagnik2001/expo-google-credential-auth/issues"
   },
