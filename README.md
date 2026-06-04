@@ -8,6 +8,21 @@ Modern **Sign in with Google** and **OAuth authorization** for Expo / React Nati
 
 > **Android + iOS.** On Android it's built on [Credential Manager](https://developer.android.com/identity/sign-in/credential-manager-siwg) + Google Identity Services (the modern APIs Google recommends for all new apps). On iOS it wraps the official [GoogleSignIn SDK](https://developers.google.com/identity/sign-in/ios), exposing the same JS API. Web is still on the roadmap — open an issue or PR if you need it.
 
+## Demo
+
+The **native OS account picker** — no browser, no WebView. Tap **Sign in with Google**, the system credential sheet slides up, and you get back a verified ID token with decoded claims:
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/account-picker.png" width="280" alt="Native Google account picker" /></td>
+    <td align="center"><img src="docs/claims.png" width="280" alt="Verified ID token and decoded claims" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Native Google account sheet</sub></td>
+    <td align="center"><sub>ID token + decoded claims</sub></td>
+  </tr>
+</table>
+
 ## Why this exists
 
 The popular [`@react-native-google-signin/google-signin`](https://www.npmjs.com/package/@react-native-google-signin/google-signin) free package still wraps the **legacy Google Sign-In SDK** on Android. Google has deprecated that SDK in favor of Credential Manager + Identity Services, which is what this package uses.
