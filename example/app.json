@@ -27,6 +27,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "../app.plugin.js",
+        {
+          "iosClientId": "716943457896-15jtcnlu7316a4eto16s0b6n0ou3d3t6.apps.googleusercontent.com"
+        }
+      ]
+    ]
   }
 }

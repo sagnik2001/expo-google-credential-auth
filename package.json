@@ -7,6 +7,8 @@
   "files": [
     "android/build.gradle",
     "android/src/main/",
+    "ios/",
+    "app.plugin.js",
     "build/",
     "src/",
     "expo-module.config.json",

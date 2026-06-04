@@ -20,7 +20,19 @@ export type SignInResult =
   | { type: 'noSavedCredentialFound' };
 
 export type ConfigureOptions = {
+  /**
+   * The **Web** OAuth client ID from Google Cloud Console. Used on every
+   * platform as the ID token's audience, and on iOS as the `serverClientID`
+   * so `requestAuthorization({ offlineAccess: true })` can return a server
+   * auth code.
+   */
   webClientId: string;
+  /**
+   * The **iOS** OAuth client ID from Google Cloud Console. **Required on iOS**
+   * (the GoogleSignIn SDK is driven by it); ignored on Android. May be omitted
+   * if you instead set `GIDClientID` in your app's Info.plist.
+   */
+  iosClientId?: string;
 };
 
 export type SignInOptions = {
@@ -28,6 +40,9 @@ export type SignInOptions = {
    * Optional nonce that will be embedded as the `nonce` claim in the returned
    * ID token. Generate a fresh, unguessable string per sign-in attempt and
    * verify it server-side to prevent replay attacks.
+   *
+   * **Android only** — the GoogleSignIn iOS SDK does not support embedding a
+   * nonce, so this is ignored on iOS.
    */
   nonce?: string;
 };

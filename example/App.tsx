@@ -35,15 +35,10 @@ import {
   View,
 } from 'react-native';
 
-// ─── 1. Configure once at module load ───────────────────────────────────────
-// `webClientId` is the *Web* OAuth client ID from Google Cloud Console
-// (not the Android one). The Android client must also exist with your
-// package name + SHA-1, but you don't reference it in code.
-//
-// Replace the placeholder below with your own. See the project README for
-// the full Google Cloud setup walkthrough.
+
 GoogleAuth.configure({
   webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+  iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
 });
 
 // ─── Available scopes for the interactive picker ────────────────────────────
